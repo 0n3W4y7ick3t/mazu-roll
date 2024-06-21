@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!-- author: Leon -->
+<!-- date: 2024/06/21 12:34 PM -->
+<!-- url: https://github.com/0n3W4y7ick3t/mazu-roll -->
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>茭杯模拟-在线问妈祖</title>
+		<style>
+				body {
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					justify-content: center;
+					height: 100vh;
+					font-family: Arial, sans-serif;
+					background-color: #f0f0f0;
+				}
+				#result {
+					margin-top: 20px;
+					font-size: 1.5em;
+				}
+				.cup {
+					width: 100px;
+					height: 100px;
+					margin: 10px;
+					display: inline-block;
+					position: relative;
+					transform-origin: center center;
+					clip-path: polygon(50% 0%, 90% 10%, 100% 40%, 85% 75%, 50% 100%, 15% 75%, 0% 40%, 10% 10%);
+					transform-style: preserve-3d;
+				}
+				.front {
+					background-color: #F5DEB3; /* 扇贝正面颜色 */
+					animation: toss-front 1s ease-in-out forwards;
+				}
+				.back {
+					background-color: #8B4513; /* 扇贝背面颜色 */
+					animation: toss-back 1s ease-in-out forwards;
+				}
+				.cup::before {
+					content: '';
+					position: absolute;
+					width: 100%;
+					height: 100%;
+					background-color: #F5DEB3; /* 扇贝正面颜色 */
+					clip-path: polygon(50% 0%, 85% 15%, 100% 40%, 85% 65%, 50% 85%, 15% 65%, 0% 40%, 15% 15%);
+					top: 0;
+					left: 0;
+					backface-visibility: hidden;
+					transform: rotateX(180deg);
+				}
+				@keyframes toss-front {
+					0% { transform: rotateX(0deg) translateY(0); }
+					15% { transform: rotateX(90deg) translateY(-30px); }
+					30% { transform: rotateX(180deg) translateY(-50px); }
+					70% { transform: rotateX(450deg) translateY(-30px); }
+					100% { transform: rotateX(720deg) translateY(0); }
+				}
+				@keyframes toss-back {
+					0% { transform: rotateX(0deg) translateY(0); }
+					15% { transform: rotateX(90deg) translateY(-30px); }
+					30% { transform: rotateX(180deg) translateY(-50px); }
+					70% { transform: rotateX(360deg) translateY(-30px); }
+					100% { transform: rotateX(540deg) translateY(0); }
+				}
+				#tossButton {
+					margin-top: 20px;
+					padding: 10px 20px;
+					font-size: 1.2em;
+					background-color: #4CAF50;
+					color: white;
+					border: none;
+					border-radius: 5px;
+					cursor: pointer;
+					transition: background-color 0.3s ease;
+				}
+				#tossButton:hover {
+					background-color: #45a049;
+				}
+		</style>
+	</head>
+	<body>
+		<h2>在线问妈祖，使用福建天气seeding (<a href="https://github.com/0n3W4y7ick3t/mazu-roll" title="repo">repo</a>)</h2>
+		<button id="tossButton">按下发问</button>
+		<div id="cupsContainer">
+			<div id="cup1" class="cup"></div>
+			<div id="cup2" class="cup"></div>
+		</div>
+		<div id="result"></div>
+
+		<script>
+			async function fetchWeatherData() {
+				try {
+					const response = await fetch('https://wttr.in/Fujian?format=%t+%p+%w');
+					if (!response.ok) {
+						throw new Error('Weather data not available');
+					}
+					const weatherData = await response.text();
+					const [temperature, precipitation, wind] = weatherData.trim().split('+').map(value => parseInt(value));
+					return {
+						temperature: temperature || 20, // Fallback to 20 degrees Celsius if temperature is not available
+						precipitation: precipitation || 0, // Fallback to 0 if precipitation is not available
+						wind: wind || 0 // Fallback to 0 km/h if wind speed is not available
+					};
+				} catch (error) {
+					console.error('Error fetching weather data:', error);
+					return {
+						temperature: 20, // Fallback temperature (20 degrees Celsius)
+						precipitation: 0, // Fallback precipitation (0 mm)
+						wind: 0 // Fallback wind speed (0 km/h)
+					};
+				}
+			}
+
+			async function generateSeed() {
+				const weatherData = await fetchWeatherData();
+				const { temperature, precipitation, wind } = weatherData;
+
+				// Combine temperature, precipitation, and wind into a single seed value
+				const seed = Math.abs(Math.round((temperature + precipitation + wind) * 1000));
+				return seed;
+			}
+
+			document.addEventListener('DOMContentLoaded', async () => {
+				const seed = await generateSeed();
+				console.log('Generated seed:', seed);
+
+				const cup1 = document.getElementById('cup1');
+				const cup2 = document.getElementById('cup2');
+				const resultDiv = document.getElementById('result');
+
+				document.getElementById('tossButton').addEventListener('click', function () {
+
+					// Remove previous animations
+					cup1.classList.remove('front', 'back');
+					cup2.classList.remove('front', 'back');
+
+					// Force reflow to reset animation
+					void cup1.offsetWidth;
+					void cup2.offsetWidth;
+
+					// Simulate toss result
+					const result1 = Math.random(seed) < 0.5 ? 'front' : 'back';
+					const result2 = Math.random(seed) < 0.5 ? 'front' : 'back';
+
+					// Apply animation based on the result
+					cup1.classList.add(result1);
+					cup2.classList.add(result2);
+
+					setTimeout(() => {
+						let resultText = '';
+						if (result1 === 'front' && result2 === 'front') {
+							resultText = '笑杯 (两个正面) - 表示神明在笑或有疑问，需要再问';
+						} else if (result1 === 'back' && result2 === 'back') {
+							resultText = '阴杯 (两个反面) - 表示神明不同意或不吉利';
+						} else {
+							resultText = '圣杯 (一正一反) - 表示神明同意或吉利';
+						}
+						resultDiv.textContent = resultText;
+					}, 1000);
+				});
+			});
+		</script>
+	</body>
+</html>
